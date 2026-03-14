@@ -34,7 +34,11 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  
+  // Normalized date helper to ensure consistency
+  const getTodayStr = () => new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(getTodayStr());
+  
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const [settings, setSettings] = useState(() => {
@@ -186,6 +190,7 @@ const App = () => {
 
   // --- MODULES ---
   const LockInModule = () => {
+    // Explicitly pull tasks from the CURRENTLY selected date
     const dayTasks = tasks[selectedDate] || [];
     const completedCount = dayTasks.filter(t => t.completed).length;
     
@@ -272,7 +277,7 @@ const App = () => {
                 <button onClick={() => setActiveTab('tasks')} className="p-2 bg-white/5 rounded-full text-white/40 hover:text-white transition-all"><ChevronRight size={20}/></button>
               </div>
               
-              <div className="flex-1 overflow-y-auto pr-2 space-y-3 no-scrollbar">
+              <div className="flex-1 overflow-y-auto pr-2 space-y-3 no-scrollbar max-h-[400px]">
                 {dayTasks.length > 0 ? dayTasks.map(task => {
                   const subject = SUBJECTS.find(s => s.id === task.subjectId) || SUBJECTS[3];
                   return (
@@ -284,7 +289,7 @@ const App = () => {
                       <div className={`p-2 rounded-lg bg-white/5 ${subject.color}`}>
                         <subject.icon size={14} />
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 text-left">
                         <p className={`text-[11px] font-bold uppercase tracking-tight truncate ${task.completed ? 'line-through' : ''}`}>{task.text}</p>
                         <p className={`text-[8px] font-bold uppercase tracking-widest opacity-40`}>{subject.label}</p>
                       </div>
@@ -294,7 +299,7 @@ const App = () => {
                 }) : (
                   <div className="h-full flex flex-col items-center justify-center opacity-20 text-center py-12">
                     <CheckSquare size={32} className="mb-4" />
-                    <p className="text-[10px] font-bold uppercase tracking-[0.4em]">No Tasks Set</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.4em]">No Tasks Set for {selectedDate}</p>
                   </div>
                 )}
               </div>
@@ -318,8 +323,11 @@ const App = () => {
       <div className="max-w-4xl mx-auto animate-page-enter">
         <BackButton />
         <header className="flex justify-between items-end mt-8 mb-12">
-          <h2 className="text-7xl font-knockout uppercase tracking-tighter leading-none">Task List</h2>
-          <button onClick={() => setIsCalendarOpen(true)} className="px-6 py-3 bg-white text-black font-bold uppercase tracking-widest text-[10px] rounded-xl">Calendar</button>
+          <div>
+             <h2 className="text-7xl font-knockout uppercase tracking-tighter leading-none">Task List</h2>
+             <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.4em] mt-2">{selectedDate}</p>
+          </div>
+          <button onClick={() => setIsCalendarOpen(true)} className="px-6 py-3 bg-white text-black font-bold uppercase tracking-widest text-[10px] rounded-xl">Change Date</button>
         </header>
 
         {/* Input & Subject Selection */}
@@ -376,7 +384,7 @@ const App = () => {
               <div key={task.id} className="p-5 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between group hover:bg-white/[0.07] transition-all">
                 <div className="flex items-center gap-4">
                   <button onClick={() => toggleTask(selectedDate, task.id)}>{task.completed ? <CheckCircle2 className="text-white"/> : <Circle className="text-white/20"/>}</button>
-                  <div className="flex flex-col">
+                  <div className="flex flex-col text-left">
                     <span className={`font-bold uppercase tracking-tight ${task.completed ? 'line-through opacity-30' : ''}`}>{task.text}</span>
                     <span className={`text-[8px] font-bold uppercase tracking-[0.2em] ${subject.color}`}>{subject.label}</span>
                   </div>
