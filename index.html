@@ -1,499 +1,386 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Calendar, 
-  CheckCircle2, 
-  Circle, 
-  Plus, 
-  Trash2, 
-  Clock, 
-  CheckSquare, 
-  ArrowLeft, 
-  Atom, 
-  Beaker, 
-  Divide, 
-  Settings as SettingsIcon, 
-  X, 
-  Music,
-  Play,
-  Pause,
-  RotateCcw,
-  Link as LinkIcon,
-  Filter,
-  ChevronRight
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Onyx Vinyl Desktop</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
 
-const SUBJECTS = [
-  { id: 'physics', label: 'Physics', icon: Atom, color: 'text-blue-400', border: 'border-blue-400/20' },
-  { id: 'chemistry', label: 'Chemistry', icon: Beaker, color: 'text-emerald-400', border: 'border-emerald-400/20' },
-  { id: 'maths', label: 'Maths', icon: Divide, color: 'text-purple-400', border: 'border-purple-400/20' },
-  { id: 'general', label: 'General', icon: CheckSquare, color: 'text-white/40', border: 'border-white/10' }
-];
+<style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Fredoka', sans-serif; }
 
-const App = () => {
-  // --- STATE MANAGEMENT ---
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState('all');
-  
-  // Normalized date helper to ensure consistency
-  const getTodayStr = () => new Date().toISOString().split('T')[0];
-  const [selectedDate, setSelectedDate] = useState(getTodayStr());
-  
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-
-  const [settings, setSettings] = useState(() => {
-    try {
-      const saved = localStorage.getItem('prod_suite_settings');
-      return saved ? JSON.parse(saved) : { bgImage: '', brightness: 30, blur: 10 };
-    } catch {
-      return { bgImage: '', brightness: 30, blur: 10 };
+    :root {
+        --onyx:#0b0b0c;
+        --lav:#f3f3f3;
+        --glow:rgba(23, 22, 24, 0.6);
     }
-  });
 
-  const [tasks, setTasks] = useState(() => {
-    try {
-      const saved = localStorage.getItem('prod_suite_tasks');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
+    body { background:var(--onyx); color:white; overflow-x:hidden; }
+
+    /* THE SYNCED BACKGROUND */
+    #bgLayer {
+    position: fixed; 
+    inset: -50px; /* Slightly larger than screen to hide blur edges */
+    background-size: cover; 
+    background-position: center;
+    /* Reduced blur from 120px to 60px saves massive CPU */
+    filter: blur(60px) brightness(0.25); 
+    z-index: -1; 
+    transition: 0.8s ease;
+    /* Forces the laptop to use the Graphics Card (GPU) instead of CPU */
+    will-change: filter;
+    transform: translateZ(0); 
+}
+
+    .app-container { display:flex; height:100vh; width:100vw; }
+
+    /* VINYL SECTION */
+    .vinyl-section {
+        flex: 1.2; 
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        position: relative;
+        overflow: hidden;
     }
-  });
 
-  const [spotifyData, setSpotifyData] = useState({
-    url: '',
-    isPlaying: false,
-    trackName: 'No Track Connected',
-    artist: 'Sync your Spotify session',
-    img: null,
-    isSyncing: false
-  });
-
-  const [studyTime, setStudyTime] = useState(() => {
-    try {
-      const saved = localStorage.getItem('study_time_data');
-      const data = saved ? JSON.parse(saved) : { seconds: 0, lastReset: new Date().toISOString() };
-      return data;
-    } catch {
-      return { seconds: 0, lastReset: new Date().toISOString() };
+    .vinyl-wrapper {
+        width: 65vw; 
+        height: 65vw; 
+        position: relative;
+        left: -25vw; 
+        flex-shrink: 0;
     }
-  });
 
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const fileInputRef = useRef(null);
+    .vinyl {
+    width: 100%; 
+    height: 100%; 
+    border-radius: 50%;
+    background: repeating-radial-gradient(circle, #111 0px, #111 2px, #0a0a0a 3px, #0a0a0a 4px),
+                radial-gradient(circle,#1a1a1a 0%,#050505 60%,#000 100%);
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    animation: spin 8s linear infinite; 
+    animation-play-state: paused;
+    /* Reduced blur on shadows prevents GPU lag */
+    box-shadow: inset 0 0 50px rgba(255,255,255,0.05), 0 0 30px rgba(0,0,0,0.8);
+    /* GPU Acceleration */
+    transform: translateZ(0);
+}
 
-  // --- EFFECTS ---
-  useEffect(() => {
-    document.title = "study.crow";
-  }, []);
+    @keyframes spin { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
 
-  useEffect(() => {
-    localStorage.setItem('prod_suite_tasks', JSON.stringify(tasks));
-  }, [tasks]);
-
-  useEffect(() => {
-    localStorage.setItem('prod_suite_settings', JSON.stringify(settings));
-  }, [settings]);
-
-  useEffect(() => {
-    localStorage.setItem('study_time_data', JSON.stringify(studyTime));
-  }, [studyTime]);
-
-  useEffect(() => {
-    let interval;
-    if (isTimerRunning) {
-      interval = setInterval(() => {
-        setStudyTime(prev => ({ ...prev, seconds: prev.seconds + 1 }));
-      }, 1000);
+    .album-art {
+        width: 38%; 
+        aspect-ratio: 1 / 1; 
+        min-width: 360px; 
+        border-radius: 50%;
+        background: #222;
+        background-size: cover;
+        background-position: center;
+        border: 8px solid #000; 
+        box-shadow: 0 0 35px var(--glow);
+        cursor: pointer;
+        transition: background-image 0.5s ease, transform 0.3s ease;
     }
-    return () => clearInterval(interval);
-  }, [isTimerRunning]);
 
-  // --- HANDLERS ---
-  const handleImageUpload = (e) => {
+    .album-art:hover { transform: scale(1.02); filter: brightness(1.2); }
+
+    /* RIGHT PANEL */
+  .info-section { 
+    flex: 0.8; 
+    padding: 20px 60px; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    text-align: center; 
+    /* Remove justify-content if it's there */
+}
+
+    h2 { 
+        font-size: 5.5rem; 
+        color: var(--lav); 
+        text-shadow: 0 0 20px var(--glow); 
+        margin-bottom: 0; 
+        line-height: 1.1; 
+    }
+
+    /* CONTROLS */
+    .controls { display:flex; justify-content:center; align-items:center; gap:30px; margin:30px 0; }
+    
+    button { 
+        background:none; border:1px solid rgba(179,157,219,0.3); color:var(--lav); 
+        padding: 15px; width: 60px; height: 60px; font-size: 1.2rem;
+        border-radius:50%; cursor:pointer; transition:0.3s; 
+        display: flex; align-items: center; justify-content: center;
+    }
+
+    .play-trigger { width: 90px; height: 90px; font-size: 2rem; }
+    button:hover { background:var(--lav); color:#000; box-shadow:0 0 20px var(--glow); }
+
+    .progress-box { width: 100%; margin-top: 15px; }
+    #progress { width:100%; accent-color: var(--lav); cursor: pointer; }
+    .time-info { display: flex; justify-content: space-between; font-size: 0.9rem; color: #888; margin-top: 5px; }
+
+    /* TIMER SECTION */
+    .timer { 
+    font-size: 200px; 
+    color: #eee; 
+    /* Lighter text shadow is much easier to render */
+    text-shadow: 0 0 25px var(--glow); 
+    transition: color 0.5s ease;
+    font-variant-numeric: tabular-nums; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 320px; 
+    width: 1000px; 
+    margin: 10px auto; 
+    white-space: nowrap; 
+    /* This stops the browser from over-calculating invisible areas */
+    contain: content; 
+}
+    .timer-controls { display:flex; justify-content:center; gap:20px; }
+    
+    .timer-controls button { 
+        width: auto; min-width: 120px; height: auto; 
+        padding: 15px 30px; border-radius: 50px; 
+        font-size: 1.1rem; display: inline-block; 
+    }
+
+    .info-section > button {
+        width: auto; height: auto; padding: 15px 40px; 
+        border-radius: 12px; margin-top: 40px; 
+        font-size: 1.2rem; white-space: nowrap; 
+    }
+
+    /* PLAYLIST */
+    .playlist-container { margin-top:20px; width:100%; max-height:400px; overflow-y:auto; text-align:left; }
+    .playlist-item { padding:8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); cursor:pointer; color:#777; }
+    .playlist-item.active { color:var(--lav); font-weight: 600; }
+
+    /* SCROLLBAR */
+    .playlist-container::-webkit-scrollbar { width: 6px; }
+    .playlist-container::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    .playlist-container::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+    .playlist-container::-webkit-scrollbar-thumb:hover { background: var(--lav); }
+
+    /* GLOW STATES */
+    .studying-glow { box-shadow: 0 0 30px rgba(244, 242, 246, 0.6) !important; border-color: var(--lav) !important; color: white !important; }
+    .break-glow { box-shadow: 0 0 30px rgba(241, 245, 244, 0.4) !important; border-color: #e0ebe9 !important; }
+    .done-glow { box-shadow: 0 0 30px rgba(255, 100, 100, 0.4) !important; border-color: #ff6464 !important; }
+</style>
+</head>
+<body>
+
+<div id="bgLayer"></div>
+<input type="file" id="manualCoverInput" accept="image/*" style="display:none">
+
+<div class="app-container">
+    <div class="vinyl-section">
+        <div class="vinyl-wrapper">
+            <div class="vinyl" id="vinyl">
+                <div class="album-art" id="art"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-section">
+        <h2 id="trackTitle">LOCK IN!</h2>
+        
+        <div class="controls">
+            <button onclick="prevTrack()">⏮</button>
+            <button onclick="togglePlay()" id="playBtn" class="play-trigger">▶</button>
+            <button onclick="nextTrack()">⏭</button>
+        </div>
+
+        <div class="progress-box">
+            <input type="range" id="progress" min="0" max="100" value="0">
+            <div class="time-info">
+                <span id="currentT">0:00</span>
+                <span id="durationT">0:00</span>
+            </div>
+        </div>
+
+        <input type="text" id="subjectInput" placeholder="WHAT ARE WE DOING?" 
+               style="background:none; border:none; border-bottom:1px solid rgba(255,255,255,0.1); 
+                      color:#888; text-align:center; font-family:'Fredoka'; font-size:1.5rem; 
+                      letter-spacing:2px; outline:none; margin-top: 30px; width:400px;">
+        
+        <div class="timer" id="timer">00:00:00</div>
+        
+        <div class="timer-controls">
+            <button onclick="startTimer(event)">LOCK IN</button>
+            <button onclick="pauseTimer(event)">BRK</button>
+            <button onclick="endSession(event)">DONE</button>
+        </div>
+
+        <div class="playlist-container" id="playlist"></div>
+        <button onclick="selectFolder()">Pick a vibe!</button>
+    </div>
+</div>
+
+<audio id="audio"></audio>
+
+<script>
+const audio=document.getElementById("audio");
+const vinyl=document.getElementById("vinyl");
+const art=document.getElementById("art");
+const bgLayer=document.getElementById("bgLayer");
+const playBtn=document.getElementById("playBtn");
+const playlistDiv=document.getElementById("playlist");
+const progress=document.getElementById("progress");
+const currentTLabel = document.getElementById("currentT");
+const durationTLabel = document.getElementById("durationT");
+
+let playlist=[];
+let currentIndex=0;
+
+function fmt(seconds) {
+    if (isNaN(seconds)) return "0:00";
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+async function selectFolder(){
+    const dir = await window.showDirectoryPicker();
+    playlist = [];
+    playlistDiv.innerHTML = "";
+    for await (const entry of dir.values()){
+        if(entry.kind==="file" && /\.(mp3|wav|ogg|flac|m4a|opus)$/i.test(entry.name)){
+            playlist.push(entry);
+            const item=document.createElement("div");
+            item.className="playlist-item";
+            item.innerText=entry.name;
+            const idx = playlist.length - 1;
+            item.onclick=()=>loadTrack(idx);
+            playlistDiv.appendChild(item);
+        }
+    }
+    if(playlist.length>0) loadTrack(0);
+}
+
+async function loadTrack(index){
+    currentIndex = index;
+    const file = await playlist[index].getFile();
+    audio.src = URL.createObjectURL(file);
+    audio.play();
+    vinyl.style.animationPlayState = "running";
+    playBtn.innerText = "⏸";
+    document.querySelectorAll(".playlist-item").forEach((el,i)=> el.classList.toggle("active",i===index));
+
+    window.jsmediatags.read(file,{
+        onSuccess:function(tag){
+            if(tag.tags.picture){
+                const pic = tag.tags.picture;
+                const base64 = pic.data.map(b=>String.fromCharCode(b)).join("");
+                const img = `data:${pic.format};base64,${btoa(base64)}`;
+                art.style.backgroundImage = `url(${img})`;
+                bgLayer.style.backgroundImage = `url(${img})`;
+            } else {
+                art.style.backgroundImage = "";
+                bgLayer.style.backgroundImage = "";
+            }
+        },
+        onError:function(error){ console.log("Tag read error:", error); }
+    });
+}
+
+function togglePlay(){
+    if(audio.paused){ audio.play(); vinyl.style.animationPlayState="running"; playBtn.innerText="⏸"; }
+    else { audio.pause(); vinyl.style.animationPlayState="paused"; playBtn.innerText="▶"; }
+}
+
+function nextTrack(){
+    if(currentIndex < playlist.length - 1) loadTrack(currentIndex + 1);
+    else loadTrack(0);
+}
+
+function prevTrack(){ if(currentIndex > 0) loadTrack(currentIndex - 1); }
+
+audio.onended = () => nextTrack();
+audio.ontimeupdate=()=>{
+    if (!isNaN(audio.duration)) {
+        progress.value=(audio.currentTime/audio.duration)*100;
+        currentTLabel.innerText = fmt(audio.currentTime);
+        durationTLabel.innerText = fmt(audio.duration);
+    }
+};
+progress.oninput=()=>{ audio.currentTime=(progress.value/100)*audio.duration; };
+
+/* --- TIMER LOGIC --- */
+let startTime = null;
+let interval = null;
+let pausedTime = 0;
+
+function format(sec){
+    let h=String(Math.floor(sec/3600)).padStart(2,"0");
+    let m=String(Math.floor((sec%3600)/60)).padStart(2,"0");
+    let s=String(sec%60).padStart(2,"0");
+    return `${h}:${m}:${s}`;
+}
+
+function startTimer(event) {
+    if (startTime) return;
+    resetButtonGlows();
+    event.target.classList.add('studying-glow');
+    document.getElementById("timer").style.color = "white";
+
+    startTime = Date.now() - pausedTime;
+    interval = setInterval(() => {
+        const now = Date.now();
+        const diff = Math.floor((now - startTime) / 1000);
+        document.getElementById("timer").innerText = format(diff); // Fixed: changed from formatTimer to format
+    }, 1000);
+}
+
+function pauseTimer(event) {
+    if (!startTime) return;
+    resetButtonGlows();
+    event.target.classList.add('break-glow');
+    document.getElementById("timer").style.color = "#64ffda";
+
+    pausedTime = Date.now() - startTime;
+    clearInterval(interval);
+    interval = null;
+    startTime = null;
+}
+
+function endSession(event) {
+    pauseTimer(event);
+    resetButtonGlows();
+    event.target.classList.add('done-glow');
+    const totalSeconds = Math.floor(pausedTime / 1000);
+    const today = new Date().toISOString().split("T")[0];
+    let data = JSON.parse(localStorage.getItem("studyData")) || {};
+    data[today] = (data[today] || 0) + totalSeconds;
+    localStorage.setItem("studyData", JSON.stringify(data));
+    pausedTime = 0;
+    document.getElementById("timer").innerText = "00:00:00";
+    alert("Session Saved.");
+}
+
+function resetButtonGlows() {
+    document.querySelectorAll('.timer-controls button').forEach(btn => btn.classList.remove('studying-glow', 'break-glow', 'done-glow'));
+}
+
+/* --- MANUAL COVER --- */
+const manualInput = document.getElementById("manualCoverInput");
+art.onclick = () => manualInput.click();
+manualInput.onchange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSettings(prev => ({ ...prev, bgImage: reader.result }));
-      };
-      reader.readAsDataURL(file);
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            art.style.backgroundImage = `url(${ev.target.result})`;
+            bgLayer.style.backgroundImage = `url(${ev.target.result})`;
+        };
+        reader.readAsDataURL(file);
     }
-  };
-
-  const addTask = (text, subjectId = 'general') => {
-    if (!text.trim()) return;
-    const newTask = {
-      id: crypto.randomUUID(),
-      text,
-      subjectId,
-      completed: false,
-      createdAt: new Date().toISOString()
-    };
-    setTasks(prev => ({
-      ...prev,
-      [selectedDate]: [...(prev[selectedDate] || []), newTask]
-    }));
-  };
-
-  const toggleTask = (date, id) => {
-    setTasks(prev => {
-      const dayTasks = prev[date] || [];
-      return {
-        ...prev,
-        [date]: dayTasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t)
-      };
-    });
-  };
-
-  const handleSpotifySync = () => {
-    const url = prompt("Paste your Spotify Track URL or Playlist Link:");
-    if (!url) return;
-
-    if (!url.includes("spotify.com")) {
-      alert("Please provide a valid Spotify URL.");
-      return;
-    }
-
-    setSpotifyData(prev => ({ ...prev, isSyncing: true }));
-
-    setTimeout(() => {
-      setSpotifyData({
-        url: url,
-        isPlaying: true,
-        trackName: "Lo-Fi Study Beats",
-        artist: "Current Session Active",
-        img: "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=800&q=80",
-        isSyncing: false
-      });
-    }, 1500);
-  };
-
-  const formatTime = (totalSeconds) => {
-    const hrs = Math.floor(totalSeconds / 3600);
-    const mins = Math.floor((totalSeconds % 3600) / 60);
-    const secs = totalSeconds % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // --- SUB-COMPONENTS ---
-  const BackButton = () => (
-    <button 
-      onClick={() => {setActiveTab('dashboard'); setIsTimerRunning(false);}} 
-      className="group flex items-center gap-2 text-white/50 hover:text-white transition-all w-fit mb-4"
-    >
-      <div className="p-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-md group-hover:border-white group-hover:bg-white group-hover:text-black transition-all">
-        <ArrowLeft size={16} />
-      </div>
-      <span className="font-bold text-[10px] tracking-[0.3em] uppercase">Dashboard</span>
-    </button>
-  );
-
-  // --- MODULES ---
-  const LockInModule = () => {
-    // Explicitly pull tasks from the CURRENTLY selected date
-    const dayTasks = tasks[selectedDate] || [];
-    const completedCount = dayTasks.filter(t => t.completed).length;
-    
-    return (
-      <div className="max-w-7xl mx-auto flex flex-col gap-8 animate-page-enter">
-        <BackButton />
-        
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Main Record/Player (Left) */}
-          <div className="lg:col-span-7 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[4rem] p-12 flex flex-col items-center justify-center text-center group relative overflow-hidden h-full min-h-[600px]">
-            <div className="absolute top-8 left-8">
-               <div className="flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full border border-white/10">
-                  <div className={`w-2 h-2 rounded-full ${spotifyData.isPlaying ? 'bg-green-500 animate-pulse' : 'bg-white/20'}`} />
-                  <span className="text-[8px] font-bold uppercase tracking-widest text-white/40">
-                    {spotifyData.isSyncing ? "Connecting..." : spotifyData.img ? "Synced" : "Offline"}
-                  </span>
-               </div>
-            </div>
-
-            <div className="relative w-64 h-64 lg:w-80 lg:h-80 mb-12 flex items-center justify-center">
-              <div className={`absolute inset-0 bg-zinc-900 rounded-full border-[14px] border-zinc-800 shadow-[0_0_100px_rgba(0,0,0,0.5)] flex items-center justify-center transition-transform duration-[3000ms] ease-linear ${spotifyData.isPlaying ? 'animate-spin-slow' : ''}`}>
-                <div className="w-full h-full rounded-full opacity-30 bg-[repeating-radial-gradient(circle,_#000_0,_#000_1px,_transparent_2px,_transparent_4px)]" />
-                <div className="absolute w-28 h-28 lg:w-32 lg:h-32 rounded-full overflow-hidden border-4 border-zinc-900 shadow-inner z-10">
-                  {spotifyData.img ? (
-                    <img src={spotifyData.img} className="w-full h-full object-cover" alt="album art" />
-                  ) : (
-                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                      <Music className="text-white/20" size={32} />
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className={`absolute -right-6 -top-4 w-3 h-40 bg-gradient-to-b from-zinc-600 to-zinc-800 origin-top transform transition-transform duration-1000 z-20 ${spotifyData.isPlaying ? 'rotate-[32deg]' : 'rotate-0'}`}>
-                 <div className="absolute bottom-0 w-8 h-6 bg-zinc-700 rounded-sm -left-2.5 shadow-lg border-b-2 border-zinc-900" />
-              </div>
-            </div>
-
-            <div className="mb-10 max-w-sm">
-              <h4 className="text-3xl font-knockout uppercase tracking-tight mb-2 truncate">
-                {spotifyData.isSyncing ? "Syncing..." : spotifyData.trackName}
-              </h4>
-              <p className="text-[11px] font-bold text-white/30 uppercase tracking-[0.25em]">{spotifyData.artist}</p>
-            </div>
-
-            <div className="flex items-center gap-5">
-              <button 
-                onClick={() => setSpotifyData(prev => ({...prev, isPlaying: !prev.isPlaying}))}
-                disabled={!spotifyData.img}
-                className={`p-5 rounded-2xl transition-all ${!spotifyData.img ? 'bg-white/5 text-white/20' : 'bg-white text-black hover:scale-110'}`}
-              >
-                {spotifyData.isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
-              </button>
-              <button onClick={handleSpotifySync} className="px-8 py-5 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all flex items-center gap-3">
-                {spotifyData.isSyncing ? <RotateCcw size={18} className="animate-spin" /> : <LinkIcon size={18} />}
-                <span className="text-[11px] font-bold uppercase tracking-widest">{spotifyData.img ? "Switch Track" : "Connect Spotify"}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Right Panel: Tasks & Timer */}
-          <div className="lg:col-span-5 flex flex-col gap-8 h-full">
-            {/* Timer Card */}
-            <div className="bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[3rem] p-8 flex flex-col items-center text-center">
-              <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.4em] mb-4 block">Study Clock</span>
-              <div className="text-6xl font-knockout tracking-tighter tabular-nums leading-none mb-8">{formatTime(studyTime.seconds)}</div>
-              <div className="flex gap-3 w-full">
-                <button 
-                  onClick={() => setIsTimerRunning(!isTimerRunning)}
-                  className={`flex-1 py-4 rounded-2xl font-bold uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-3 ${isTimerRunning ? 'bg-red-500/10 text-red-500' : 'bg-white text-black'}`}
-                >
-                  {isTimerRunning ? <Pause size={14}/> : <Play size={14}/>} {isTimerRunning ? "Pause" : "Start"}
-                </button>
-                <button onClick={() => setStudyTime(p => ({...p, seconds: 0}))} className="px-6 py-4 bg-white/5 text-white/40 rounded-2xl text-[10px] font-bold uppercase tracking-widest border border-white/5">Reset</button>
-              </div>
-            </div>
-
-            {/* In-Session Tasks Card */}
-            <div className="flex-1 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[3rem] p-8 flex flex-col overflow-hidden">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-2xl font-knockout uppercase tracking-tight">Objectives</h3>
-                  <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">{completedCount} / {dayTasks.length} Completed</p>
-                </div>
-                <button onClick={() => setActiveTab('tasks')} className="p-2 bg-white/5 rounded-full text-white/40 hover:text-white transition-all"><ChevronRight size={20}/></button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto pr-2 space-y-3 no-scrollbar max-h-[400px]">
-                {dayTasks.length > 0 ? dayTasks.map(task => {
-                  const subject = SUBJECTS.find(s => s.id === task.subjectId) || SUBJECTS[3];
-                  return (
-                    <div 
-                      key={task.id} 
-                      onClick={() => toggleTask(selectedDate, task.id)}
-                      className={`p-4 bg-white/5 border rounded-2xl flex items-center gap-4 cursor-pointer transition-all hover:bg-white/[0.08] ${task.completed ? 'opacity-40 border-white/5' : 'border-white/10'}`}
-                    >
-                      <div className={`p-2 rounded-lg bg-white/5 ${subject.color}`}>
-                        <subject.icon size={14} />
-                      </div>
-                      <div className="flex-1 min-w-0 text-left">
-                        <p className={`text-[11px] font-bold uppercase tracking-tight truncate ${task.completed ? 'line-through' : ''}`}>{task.text}</p>
-                        <p className={`text-[8px] font-bold uppercase tracking-widest opacity-40`}>{subject.label}</p>
-                      </div>
-                      {task.completed ? <CheckCircle2 size={16} className="text-white shrink-0"/> : <Circle size={16} className="text-white/10 shrink-0"/>}
-                    </div>
-                  );
-                }) : (
-                  <div className="h-full flex flex-col items-center justify-center opacity-20 text-center py-12">
-                    <CheckSquare size={32} className="mb-4" />
-                    <p className="text-[10px] font-bold uppercase tracking-[0.4em]">No Tasks Set for {selectedDate}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const TaskModule = () => {
-    const [inputValue, setInputValue] = useState('');
-    const [selectedSubject, setSelectedSubject] = useState('general');
-    const dayTasks = tasks[selectedDate] || [];
-    
-    const filteredTasks = activeFilter === 'all' 
-      ? dayTasks 
-      : dayTasks.filter(t => t.subjectId === activeFilter);
-    
-    return (
-      <div className="max-w-4xl mx-auto animate-page-enter">
-        <BackButton />
-        <header className="flex justify-between items-end mt-8 mb-12">
-          <div>
-             <h2 className="text-7xl font-knockout uppercase tracking-tighter leading-none">Task List</h2>
-             <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.4em] mt-2">{selectedDate}</p>
-          </div>
-          <button onClick={() => setIsCalendarOpen(true)} className="px-6 py-3 bg-white text-black font-bold uppercase tracking-widest text-[10px] rounded-xl">Change Date</button>
-        </header>
-
-        {/* Input & Subject Selection */}
-        <div className="bg-white/5 border border-white/10 p-8 rounded-[2.5rem] mb-10">
-          <div className="flex gap-4 mb-6">
-            <input 
-              type="text" value={inputValue} 
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && (addTask(inputValue, selectedSubject), setInputValue(''))}
-              placeholder="DEFINE OBJECTIVE..."
-              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-6 py-4 text-xs font-bold uppercase tracking-widest focus:outline-none"
-            />
-            <button onClick={() => {addTask(inputValue, selectedSubject); setInputValue('');}} className="bg-white text-black px-8 rounded-xl"><Plus size={24}/></button>
-          </div>
-          
-          <div className="flex flex-wrap gap-3">
-            {SUBJECTS.map((sub) => (
-              <button 
-                key={sub.id} 
-                onClick={() => setSelectedSubject(sub.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all text-[10px] font-bold uppercase tracking-widest ${selectedSubject === sub.id ? 'bg-white text-black border-white' : 'bg-white/5 text-white/40 border-white/10'}`}
-              >
-                <sub.icon size={12} />
-                {sub.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex items-center gap-4 mb-6 overflow-x-auto no-scrollbar pb-2">
-          <div className="p-2 text-white/20"><Filter size={16}/></div>
-          <button 
-            onClick={() => setActiveFilter('all')}
-            className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest border transition-all ${activeFilter === 'all' ? 'bg-white/20 border-white/40' : 'bg-transparent border-white/5 text-white/20'}`}
-          >
-            All Tasks
-          </button>
-          {SUBJECTS.map(sub => (
-            <button 
-              key={sub.id}
-              onClick={() => setActiveFilter(sub.id)}
-              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest border transition-all ${activeFilter === sub.id ? 'bg-white/20 border-white/40 text-white' : 'bg-transparent border-white/5 text-white/20'}`}
-            >
-              {sub.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="space-y-3">
-          {filteredTasks.length > 0 ? filteredTasks.map(task => {
-            const subject = SUBJECTS.find(s => s.id === task.subjectId) || SUBJECTS[3];
-            return (
-              <div key={task.id} className="p-5 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between group hover:bg-white/[0.07] transition-all">
-                <div className="flex items-center gap-4">
-                  <button onClick={() => toggleTask(selectedDate, task.id)}>{task.completed ? <CheckCircle2 className="text-white"/> : <Circle className="text-white/20"/>}</button>
-                  <div className="flex flex-col text-left">
-                    <span className={`font-bold uppercase tracking-tight ${task.completed ? 'line-through opacity-30' : ''}`}>{task.text}</span>
-                    <span className={`text-[8px] font-bold uppercase tracking-[0.2em] ${subject.color}`}>{subject.label}</span>
-                  </div>
-                </div>
-                <button onClick={() => setTasks(p => ({...p, [selectedDate]: (p[selectedDate] || []).filter(t => t.id !== task.id)}))} className="opacity-0 group-hover:opacity-100 text-white/20 hover:text-white transition-all"><Trash2 size={16}/></button>
-              </div>
-            );
-          }) : (
-            <div className="py-20 text-center opacity-20 uppercase font-bold tracking-[0.5em] text-[10px]">No tasks found for this view</div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // --- MAIN RENDER ---
-  return (
-    <div className="min-h-screen bg-black text-white font-sans overflow-x-hidden relative">
-      {settings.bgImage && (
-        <div className="fixed inset-0 z-0" style={{ backgroundImage: `url(${settings.bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center', filter: `brightness(${settings.brightness}%) blur(${settings.blur}px)` }} />
-      )}
-      
-      <main className="relative z-10 container mx-auto px-6 py-12 min-h-screen flex flex-col">
-        <div className="fixed top-8 right-8 z-[70]">
-          <button onClick={() => setIsSettingsOpen(true)} className="p-4 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-2xl hover:bg-white hover:text-black transition-all"><SettingsIcon size={20} /></button>
-        </div>
-
-        {activeTab === 'dashboard' ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center space-y-16">
-            <div className="animate-subtle-float">
-              <div className="w-28 h-28 bg-white rounded-[2.8rem] flex items-center justify-center mb-10 shadow-[0_0_80px_rgba(255,255,255,0.15)] mx-auto overflow-hidden">
-                <div className="text-black font-bold text-2xl font-knockout tracking-tighter">SC</div>
-              </div>
-              <h1 className="text-9xl font-knockout tracking-tighter uppercase leading-none">study<span className="text-white/20">.</span>crow</h1>
-              <p className="mt-6 text-white/30 font-bold tracking-[0.6em] text-[10px] uppercase">Peak Performance System</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-3xl">
-              <button onClick={() => setActiveTab('tasks')} className="group p-12 rounded-[3rem] border bg-white/5 border-white/10 hover:border-white/50 transition-all duration-700">
-                <CheckSquare size={40} className="mx-auto mb-6 text-white/20 group-hover:text-white transition-all"/>
-                <span className="block font-knockout text-3xl uppercase tracking-tighter">Task List</span>
-              </button>
-              <button onClick={() => setActiveTab('lockin')} className="group p-12 rounded-[3rem] border bg-white/5 border-white/10 hover:border-white/50 transition-all duration-700">
-                <Clock size={40} className="mx-auto mb-6 text-white/20 group-hover:text-white transition-all"/>
-                <span className="block font-knockout text-3xl uppercase tracking-tighter">Lock In</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex-1">
-            {activeTab === 'tasks' ? <TaskModule /> : <LockInModule />}
-          </div>
-        )}
-      </main>
-
-      {isSettingsOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-end p-6 pointer-events-none">
-          <div className="w-full max-w-sm bg-black/80 backdrop-blur-3xl border border-white/10 rounded-[3rem] p-10 pointer-events-auto shadow-2xl animate-settings-enter">
-            <div className="flex items-center justify-between mb-12">
-              <h3 className="text-2xl font-knockout uppercase tracking-tight">System Visuals</h3>
-              <button onClick={() => setIsSettingsOpen(false)} className="p-2 hover:bg-white/10 rounded-full"><X /></button>
-            </div>
-            <div className="space-y-10">
-              <div onClick={() => fileInputRef.current.click()} className="aspect-video rounded-3xl border border-dashed border-white/10 bg-white/5 flex flex-col items-center justify-center cursor-pointer relative overflow-hidden">
-                {settings.bgImage ? <img src={settings.bgImage} className="absolute inset-0 w-full h-full object-cover opacity-50" alt="bg" /> : <Music size={32} className="text-white/20" />}
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-              </div>
-              <input type="range" min="0" max="100" value={settings.brightness} onChange={(e) => setSettings(prev => ({ ...prev, brightness: parseInt(e.target.value) }))} className="w-full accent-white" />
-              <input type="range" min="0" max="50" value={settings.blur} onChange={(e) => setSettings(prev => ({ ...prev, blur: parseInt(e.target.value) }))} className="w-full accent-white" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isCalendarOpen && (
-        <div className="fixed inset-0 z-[101] flex items-center justify-center p-6 bg-black/80 backdrop-blur-2xl">
-          <div className="bg-zinc-950 border border-white/10 rounded-[3rem] p-10 w-full max-w-md shadow-2xl">
-            <div className="flex items-center justify-between mb-10">
-              <h3 className="text-4xl font-knockout uppercase tracking-tighter text-white">Calendar</h3>
-              <button onClick={() => setIsCalendarOpen(false)} className="p-3 hover:bg-white/10 text-white rounded-full"><X/></button>
-            </div>
-            <div className="grid grid-cols-7 gap-3">
-              {Array.from({length: 31}).map((_, i) => {
-                const day = i + 1;
-                const dateString = `2024-01-${String(day).padStart(2, '0')}`;
-                return (
-                  <button key={i} onClick={() => {setSelectedDate(dateString); setIsCalendarOpen(false);}} className={`h-10 w-10 flex items-center justify-center rounded-lg hover:bg-white/10 text-xs font-bold ${selectedDate === dateString ? 'bg-white text-black' : ''}`}>{day}</button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@700&display=swap');
-        .font-knockout { font-family: 'Oswald', sans-serif; letter-spacing: -0.04em; transform: scaleY(1.2); display: inline-block; }
-        @keyframes subtle-float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }
-        @keyframes page-enter { from { opacity: 0; filter: blur(20px); } to { opacity: 1; filter: blur(0); } }
-        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes settings-enter { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
-        .animate-subtle-float { animation: subtle-float 12s ease-in-out infinite; }
-        .animate-page-enter { animation: page-enter 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .animate-spin-slow { animation: spin-slow 8s linear infinite; }
-        .animate-settings-enter { animation: settings-enter 0.4s ease-out forwards; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-      `}</style>
-    </div>
-  );
 };
-
-export default App;
+</script>
+</body>
+</html>
