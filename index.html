@@ -1,386 +1,409 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Onyx Vinyl Desktop</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOCK IN - Vinyl Pomodoro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #0a0a0a;
+            color: #ffffff;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            overflow-y: auto; /* Changed from hidden to allow scrolling */
+            overflow-x: hidden;
+        }
 
-<style>
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Fredoka', sans-serif; }
+        /* Large Side Vinyl Positioning - Remains fixed while content scrolls */
+        .vinyl-wrapper {
+            position: fixed;
+            left: -15%;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 600px;
+            height: 600px;
+            z-index: 1;
+            pointer-events: none; /* Allows clicks to pass through to content if needed */
+        }
 
-    :root {
-        --onyx:#0b0b0c;
-        --lav:#f3f3f3;
-        --glow:rgba(23, 22, 24, 0.6);
-    }
+        .vinyl {
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #1a1a1a 30%, #000 70%);
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 100px rgba(0,0,0,1);
+            pointer-events: auto;
+        }
 
-    body { background:var(--onyx); color:white; overflow-x:hidden; }
+        .vinyl::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: repeating-radial-gradient(
+                circle,
+                rgba(255,255,255,0.03) 0px,
+                rgba(255,255,255,0.03) 1px,
+                transparent 2px,
+                transparent 4px
+            );
+        }
 
-    /* THE SYNCED BACKGROUND */
-    #bgLayer {
-    position: fixed; 
-    inset: -50px; /* Slightly larger than screen to hide blur edges */
-    background-size: cover; 
-    background-position: center;
-    /* Reduced blur from 120px to 60px saves massive CPU */
-    filter: blur(60px) brightness(0.25); 
-    z-index: -1; 
-    transition: 0.8s ease;
-    /* Forces the laptop to use the Graphics Card (GPU) instead of CPU */
-    will-change: filter;
-    transform: translateZ(0); 
-}
+        .vinyl.spinning {
+            animation: rotate-vinyl 4s linear infinite;
+        }
 
-    .app-container { display:flex; height:100vh; width:100vw; }
+        @keyframes rotate-vinyl {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
 
-    /* VINYL SECTION */
-    .vinyl-section {
-        flex: 1.2; 
-        display: flex;
-        justify-content: flex-start;
-        align-items: center;
-        position: relative;
-        overflow: hidden;
-    }
+        .label {
+            width: 180px;
+            height: 180px;
+            background: #222;
+            border-radius: 50%;
+            z-index: 5;
+            overflow: hidden;
+            background-size: cover;
+            background-position: center;
+            border: 2px solid #000;
+        }
 
-    .vinyl-wrapper {
-        width: 65vw; 
-        height: 65vw; 
-        position: relative;
-        left: -25vw; 
-        flex-shrink: 0;
-    }
+        /* UI Styling */
+        .main-content {
+            position: relative;
+            z-index: 10;
+            margin-left: 45%;
+            min-height: 100vh; /* Ensure content covers viewport height */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 4rem 5% 4rem 0; /* Added vertical padding for scrolling clearance */
+        }
 
-    .vinyl {
-    width: 100%; 
-    height: 100%; 
-    border-radius: 50%;
-    background: repeating-radial-gradient(circle, #111 0px, #111 2px, #0a0a0a 3px, #0a0a0a 4px),
-                radial-gradient(circle,#1a1a1a 0%,#050505 60%,#000 100%);
-    display: flex; 
-    align-items: center; 
-    justify-content: center;
-    animation: spin 8s linear infinite; 
-    animation-play-state: paused;
-    /* Reduced blur on shadows prevents GPU lag */
-    box-shadow: inset 0 0 50px rgba(255,255,255,0.05), 0 0 30px rgba(0,0,0,0.8);
-    /* GPU Acceleration */
-    transform: translateZ(0);
-}
+        .timer-digits {
+            font-size: clamp(4rem, 15vw, 10rem); /* Responsive font sizing */
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: -0.05em;
+        }
 
-    @keyframes spin { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+        .progress-bar-container {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            margin: 20px 0;
+            border-radius: 2px;
+            position: relative;
+        }
 
-    .album-art {
-        width: 38%; 
-        aspect-ratio: 1 / 1; 
-        min-width: 360px; 
-        border-radius: 50%;
-        background: #222;
-        background-size: cover;
-        background-position: center;
-        border: 8px solid #000; 
-        box-shadow: 0 0 35px var(--glow);
-        cursor: pointer;
-        transition: background-image 0.5s ease, transform 0.3s ease;
-    }
+        .progress-bar-fill {
+            height: 100%;
+            background: #fff;
+            width: 0%;
+            transition: width 1s linear;
+        }
 
-    .album-art:hover { transform: scale(1.02); filter: brightness(1.2); }
+        .btn-pill {
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 24px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: all 0.2s;
+        }
 
-    /* RIGHT PANEL */
-  .info-section { 
-    flex: 0.8; 
-    padding: 20px 60px; 
-    display: flex; 
-    flex-direction: column; 
-    align-items: center; 
-    text-align: center; 
-    /* Remove justify-content if it's there */
-}
+        .btn-pill:hover {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
 
-    h2 { 
-        font-size: 5.5rem; 
-        color: var(--lav); 
-        text-shadow: 0 0 20px var(--glow); 
-        margin-bottom: 0; 
-        line-height: 1.1; 
-    }
+        .btn-pill.active {
+            background: #fff;
+            color: #000;
+            box-shadow: 0 0 15px rgba(255,255,255,0.4);
+        }
 
-    /* CONTROLS */
-    .controls { display:flex; justify-content:center; align-items:center; gap:30px; margin:30px 0; }
-    
-    button { 
-        background:none; border:1px solid rgba(179,157,219,0.3); color:var(--lav); 
-        padding: 15px; width: 60px; height: 60px; font-size: 1.2rem;
-        border-radius:50%; cursor:pointer; transition:0.3s; 
-        display: flex; align-items: center; justify-content: center;
-    }
+        .playlist-item {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.5);
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
 
-    .play-trigger { width: 90px; height: 90px; font-size: 2rem; }
-    button:hover { background:var(--lav); color:#000; box-shadow:0 0 20px var(--glow); }
+        .playlist-item.playing {
+            color: #fff;
+        }
 
-    .progress-box { width: 100%; margin-top: 15px; }
-    #progress { width:100%; accent-color: var(--lav); cursor: pointer; }
-    .time-info { display: flex; justify-content: space-between; font-size: 0.9rem; color: #888; margin-top: 5px; }
+        input[type="number"], input[type="text"] {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            text-align: left;
+            outline: none;
+        }
 
-    /* TIMER SECTION */
-    .timer { 
-    font-size: 200px; 
-    color: #eee; 
-    /* Lighter text shadow is much easier to render */
-    text-shadow: 0 0 25px var(--glow); 
-    transition: color 0.5s ease;
-    font-variant-numeric: tabular-nums; 
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 320px; 
-    width: 1000px; 
-    margin: 10px auto; 
-    white-space: nowrap; 
-    /* This stops the browser from over-calculating invisible areas */
-    contain: content; 
-}
-    .timer-controls { display:flex; justify-content:center; gap:20px; }
-    
-    .timer-controls button { 
-        width: auto; min-width: 120px; height: auto; 
-        padding: 15px 30px; border-radius: 50px; 
-        font-size: 1.1rem; display: inline-block; 
-    }
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            .vinyl-wrapper {
+                position: absolute;
+                left: 50%;
+                top: -150px;
+                transform: translateX(-50%);
+                width: 400px;
+                height: 400px;
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 300px 1rem 4rem 1rem;
+                align-items: center;
+                text-align: center;
+            }
+            .timer-digits {
+                font-size: 6rem;
+            }
+        }
 
-    .info-section > button {
-        width: auto; height: auto; padding: 15px 40px; 
-        border-radius: 12px; margin-top: 40px; 
-        font-size: 1.2rem; white-space: nowrap; 
-    }
-
-    /* PLAYLIST */
-    .playlist-container { margin-top:20px; width:100%; max-height:400px; overflow-y:auto; text-align:left; }
-    .playlist-item { padding:8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); cursor:pointer; color:#777; }
-    .playlist-item.active { color:var(--lav); font-weight: 600; }
-
-    /* SCROLLBAR */
-    .playlist-container::-webkit-scrollbar { width: 6px; }
-    .playlist-container::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
-    .playlist-container::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-    .playlist-container::-webkit-scrollbar-thumb:hover { background: var(--lav); }
-
-    /* GLOW STATES */
-    .studying-glow { box-shadow: 0 0 30px rgba(244, 242, 246, 0.6) !important; border-color: var(--lav) !important; color: white !important; }
-    .break-glow { box-shadow: 0 0 30px rgba(241, 245, 244, 0.4) !important; border-color: #e0ebe9 !important; }
-    .done-glow { box-shadow: 0 0 30px rgba(255, 100, 100, 0.4) !important; border-color: #ff6464 !important; }
-</style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+        }
+    </style>
 </head>
 <body>
 
-<div id="bgLayer"></div>
-<input type="file" id="manualCoverInput" accept="image/*" style="display:none">
+    <!-- Vinyl Section -->
+    <div class="vinyl-wrapper">
+        <div class="vinyl" id="vinyl">
+            <div class="label" id="vinyl-label" style="background-image: url('https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=500&auto=format&fit=crop');"></div>
+        </div>
+    </div>
 
-<div class="app-container">
-    <div class="vinyl-section">
-        <div class="vinyl-wrapper">
-            <div class="vinyl" id="vinyl">
-                <div class="album-art" id="art"></div>
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="max-w-xl w-full">
+            <h1 id="header-text" class="text-6xl font-black mb-8 italic">LOCK IN!</h1>
+            
+            <!-- Playback Controls Style -->
+            <div class="flex items-center space-x-6 mb-8 text-gray-400 justify-start md:justify-start justify-center">
+                <button id="btn-prev" class="hover:text-white transition">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18V6h2v12H6zm3.5-6L18 6v12l-8.5-6z"/></svg>
+                </button>
+                <button id="btn-play-pause" class="w-12 h-12 rounded-full border border-gray-600 flex items-center justify-center hover:text-white hover:border-white transition">
+                    <svg id="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    <svg id="pause-icon" class="hidden" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+                <button id="btn-next" class="hover:text-white transition">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M16 18h2V6h-2v12zM6 18l8.5-6L6 6v12z"/></svg>
+                </button>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-bar-container">
+                <div id="progress-fill" class="progress-bar-fill"></div>
+            </div>
+
+            <div class="mb-4 text-left">
+                <span class="text-xs text-gray-500 uppercase tracking-widest block">What are we doing?</span>
+                <input type="text" id="task-input" class="w-full text-xl py-2" placeholder="Enter session goal...">
+            </div>
+
+            <!-- Timer Display -->
+            <div id="timer-display" class="timer-digits">25:00</div>
+
+            <!-- Mode Switchers -->
+            <div class="flex space-x-4 mt-8 justify-center md:justify-start">
+                <button id="btn-lockin" class="btn-pill active">Lock In</button>
+                <button id="btn-break" class="btn-pill">Brk</button>
+                <button id="btn-reset" class="btn-pill">Done</button>
+            </div>
+
+            <!-- Settings / Uploads Section -->
+            <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-white/10 pt-8 text-left">
+                <div>
+                    <h3 class="text-xs uppercase text-gray-500 mb-4">Timer Settings</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center text-sm">
+                            <span>Focus Time</span>
+                            <input type="number" id="input-focus" value="25" class="w-12">
+                        </div>
+                        <div class="flex justify-between items-center text-sm">
+                            <span>Break Time</span>
+                            <input type="number" id="input-break" value="5" class="w-12">
+                        </div>
+                        <div class="mt-4">
+                            <label class="text-xs text-gray-500 block mb-2">Change Label</label>
+                            <input type="file" id="image-upload" accept="image/*" class="text-xs text-gray-400">
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-xs uppercase text-gray-500 mb-4">Vibe Playlist</h3>
+                    <input type="file" id="audio-upload" accept="audio/*" multiple class="text-xs text-gray-400 mb-4">
+                    <div id="playlist-container" class="max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                        <!-- Playlist items appear here -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="info-section">
-        <h2 id="trackTitle">LOCK IN!</h2>
+    <audio id="audio-player"></audio>
+
+    <script>
+        // State
+        let timeLeft = 25 * 60;
+        let totalSessionTime = 25 * 60;
+        let timerId = null;
+        let isRunning = false;
+        let currentMode = 'focus';
+        let playlist = [];
+        let currentTrackIndex = 0;
+
+        // Elements
+        const timerDisplay = document.getElementById('timer-display');
+        const progressFill = document.getElementById('progress-fill');
+        const vinyl = document.getElementById('vinyl');
+        const playPauseBtn = document.getElementById('btn-play-pause');
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
+        const audioPlayer = document.getElementById('audio-player');
         
-        <div class="controls">
-            <button onclick="prevTrack()">⏮</button>
-            <button onclick="togglePlay()" id="playBtn" class="play-trigger">▶</button>
-            <button onclick="nextTrack()">⏭</button>
-        </div>
-
-        <div class="progress-box">
-            <input type="range" id="progress" min="0" max="100" value="0">
-            <div class="time-info">
-                <span id="currentT">0:00</span>
-                <span id="durationT">0:00</span>
-            </div>
-        </div>
-
-        <input type="text" id="subjectInput" placeholder="WHAT ARE WE DOING?" 
-               style="background:none; border:none; border-bottom:1px solid rgba(255,255,255,0.1); 
-                      color:#888; text-align:center; font-family:'Fredoka'; font-size:1.5rem; 
-                      letter-spacing:2px; outline:none; margin-top: 30px; width:400px;">
-        
-        <div class="timer" id="timer">00:00:00</div>
-        
-        <div class="timer-controls">
-            <button onclick="startTimer(event)">LOCK IN</button>
-            <button onclick="pauseTimer(event)">BRK</button>
-            <button onclick="endSession(event)">DONE</button>
-        </div>
-
-        <div class="playlist-container" id="playlist"></div>
-        <button onclick="selectFolder()">Pick a vibe!</button>
-    </div>
-</div>
-
-<audio id="audio"></audio>
-
-<script>
-const audio=document.getElementById("audio");
-const vinyl=document.getElementById("vinyl");
-const art=document.getElementById("art");
-const bgLayer=document.getElementById("bgLayer");
-const playBtn=document.getElementById("playBtn");
-const playlistDiv=document.getElementById("playlist");
-const progress=document.getElementById("progress");
-const currentTLabel = document.getElementById("currentT");
-const durationTLabel = document.getElementById("durationT");
-
-let playlist=[];
-let currentIndex=0;
-
-function fmt(seconds) {
-    if (isNaN(seconds)) return "0:00";
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-async function selectFolder(){
-    const dir = await window.showDirectoryPicker();
-    playlist = [];
-    playlistDiv.innerHTML = "";
-    for await (const entry of dir.values()){
-        if(entry.kind==="file" && /\.(mp3|wav|ogg|flac|m4a|opus)$/i.test(entry.name)){
-            playlist.push(entry);
-            const item=document.createElement("div");
-            item.className="playlist-item";
-            item.innerText=entry.name;
-            const idx = playlist.length - 1;
-            item.onclick=()=>loadTrack(idx);
-            playlistDiv.appendChild(item);
+        function updateUI() {
+            const mins = Math.floor(timeLeft / 60);
+            const secs = timeLeft % 60;
+            timerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            
+            const progress = ((totalSessionTime - timeLeft) / totalSessionTime) * 100;
+            progressFill.style.width = `${progress}%`;
         }
-    }
-    if(playlist.length>0) loadTrack(0);
-}
 
-async function loadTrack(index){
-    currentIndex = index;
-    const file = await playlist[index].getFile();
-    audio.src = URL.createObjectURL(file);
-    audio.play();
-    vinyl.style.animationPlayState = "running";
-    playBtn.innerText = "⏸";
-    document.querySelectorAll(".playlist-item").forEach((el,i)=> el.classList.toggle("active",i===index));
+        function togglePlay() {
+            isRunning ? pause() : start();
+        }
 
-    window.jsmediatags.read(file,{
-        onSuccess:function(tag){
-            if(tag.tags.picture){
-                const pic = tag.tags.picture;
-                const base64 = pic.data.map(b=>String.fromCharCode(b)).join("");
-                const img = `data:${pic.format};base64,${btoa(base64)}`;
-                art.style.backgroundImage = `url(${img})`;
-                bgLayer.style.backgroundImage = `url(${img})`;
-            } else {
-                art.style.backgroundImage = "";
-                bgLayer.style.backgroundImage = "";
+        function start() {
+            isRunning = true;
+            vinyl.classList.add('spinning');
+            playIcon.classList.add('hidden');
+            pauseIcon.classList.remove('hidden');
+            
+            if (playlist.length > 0 && audioPlayer.paused) {
+                audioPlayer.play();
             }
-        },
-        onError:function(error){ console.log("Tag read error:", error); }
-    });
-}
 
-function togglePlay(){
-    if(audio.paused){ audio.play(); vinyl.style.animationPlayState="running"; playBtn.innerText="⏸"; }
-    else { audio.pause(); vinyl.style.animationPlayState="paused"; playBtn.innerText="▶"; }
-}
+            timerId = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    updateUI();
+                } else {
+                    clearInterval(timerId);
+                    handleSessionEnd();
+                }
+            }, 1000);
+        }
 
-function nextTrack(){
-    if(currentIndex < playlist.length - 1) loadTrack(currentIndex + 1);
-    else loadTrack(0);
-}
+        function pause() {
+            isRunning = false;
+            clearInterval(timerId);
+            vinyl.classList.remove('spinning');
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+            audioPlayer.pause();
+        }
 
-function prevTrack(){ if(currentIndex > 0) loadTrack(currentIndex - 1); }
+        function handleSessionEnd() {
+            pause();
+            const ding = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+            ding.play().catch(() => {});
+            alert(currentMode === 'focus' ? "Focus complete! Break time." : "Break over! Lock in.");
+        }
 
-audio.onended = () => nextTrack();
-audio.ontimeupdate=()=>{
-    if (!isNaN(audio.duration)) {
-        progress.value=(audio.currentTime/audio.duration)*100;
-        currentTLabel.innerText = fmt(audio.currentTime);
-        durationTLabel.innerText = fmt(audio.duration);
-    }
-};
-progress.oninput=()=>{ audio.currentTime=(progress.value/100)*audio.duration; };
-
-/* --- TIMER LOGIC --- */
-let startTime = null;
-let interval = null;
-let pausedTime = 0;
-
-function format(sec){
-    let h=String(Math.floor(sec/3600)).padStart(2,"0");
-    let m=String(Math.floor((sec%3600)/60)).padStart(2,"0");
-    let s=String(sec%60).padStart(2,"0");
-    return `${h}:${m}:${s}`;
-}
-
-function startTimer(event) {
-    if (startTime) return;
-    resetButtonGlows();
-    event.target.classList.add('studying-glow');
-    document.getElementById("timer").style.color = "white";
-
-    startTime = Date.now() - pausedTime;
-    interval = setInterval(() => {
-        const now = Date.now();
-        const diff = Math.floor((now - startTime) / 1000);
-        document.getElementById("timer").innerText = format(diff); // Fixed: changed from formatTimer to format
-    }, 1000);
-}
-
-function pauseTimer(event) {
-    if (!startTime) return;
-    resetButtonGlows();
-    event.target.classList.add('break-glow');
-    document.getElementById("timer").style.color = "#64ffda";
-
-    pausedTime = Date.now() - startTime;
-    clearInterval(interval);
-    interval = null;
-    startTime = null;
-}
-
-function endSession(event) {
-    pauseTimer(event);
-    resetButtonGlows();
-    event.target.classList.add('done-glow');
-    const totalSeconds = Math.floor(pausedTime / 1000);
-    const today = new Date().toISOString().split("T")[0];
-    let data = JSON.parse(localStorage.getItem("studyData")) || {};
-    data[today] = (data[today] || 0) + totalSeconds;
-    localStorage.setItem("studyData", JSON.stringify(data));
-    pausedTime = 0;
-    document.getElementById("timer").innerText = "00:00:00";
-    alert("Session Saved.");
-}
-
-function resetButtonGlows() {
-    document.querySelectorAll('.timer-controls button').forEach(btn => btn.classList.remove('studying-glow', 'break-glow', 'done-glow'));
-}
-
-/* --- MANUAL COVER --- */
-const manualInput = document.getElementById("manualCoverInput");
-art.onclick = () => manualInput.click();
-manualInput.onchange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            art.style.backgroundImage = `url(${ev.target.result})`;
-            bgLayer.style.backgroundImage = `url(${ev.target.result})`;
+        document.getElementById('btn-lockin').onclick = () => {
+            currentMode = 'focus';
+            totalSessionTime = (document.getElementById('input-focus').value || 25) * 60;
+            timeLeft = totalSessionTime;
+            document.getElementById('header-text').textContent = "LOCK IN!";
+            document.getElementById('btn-lockin').classList.add('active');
+            document.getElementById('btn-break').classList.remove('active');
+            pause();
+            updateUI();
         };
-        reader.readAsDataURL(file);
-    }
-};
-</script>
+
+        document.getElementById('btn-break').onclick = () => {
+            currentMode = 'break';
+            totalSessionTime = (document.getElementById('input-break').value || 5) * 60;
+            timeLeft = totalSessionTime;
+            document.getElementById('header-text').textContent = "BREATHER";
+            document.getElementById('btn-break').classList.add('active');
+            document.getElementById('btn-lockin').classList.remove('active');
+            pause();
+            updateUI();
+        };
+
+        document.getElementById('btn-reset').onclick = () => {
+            if(confirm("Reset everything?")) location.reload();
+        };
+
+        document.getElementById('image-upload').onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                document.getElementById('vinyl-label').style.backgroundImage = `url(${url})`;
+            }
+        };
+
+        document.getElementById('audio-upload').onchange = (e) => {
+            const files = Array.from(e.target.files);
+            const container = document.getElementById('playlist-container');
+            container.innerHTML = '';
+            playlist = files.map((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'playlist-item cursor-pointer';
+                item.textContent = `${index + 1}. ${file.name}`;
+                item.onclick = () => loadTrack(index);
+                container.appendChild(item);
+                return { file, element: item };
+            });
+            if (playlist.length > 0) loadTrack(0);
+        };
+
+        function loadTrack(index) {
+            if (!playlist[index]) return;
+            currentTrackIndex = index;
+            const url = URL.createObjectURL(playlist[index].file);
+            audioPlayer.src = url;
+            playlist.forEach((p, i) => {
+                p.element.classList.toggle('playing', i === index);
+            });
+            if (isRunning) audioPlayer.play();
+        }
+
+        document.getElementById('btn-next').onclick = () => {
+            if (currentTrackIndex < playlist.length - 1) loadTrack(currentTrackIndex + 1);
+        };
+
+        document.getElementById('btn-prev').onclick = () => {
+            if (currentTrackIndex > 0) loadTrack(currentTrackIndex - 1);
+        };
+
+        playPauseBtn.onclick = togglePlay;
+        audioPlayer.onended = () => document.getElementById('btn-next').click();
+
+        updateUI();
+    </script>
 </body>
 </html>
